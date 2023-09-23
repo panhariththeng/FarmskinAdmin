@@ -11,8 +11,10 @@ import {
   Container,
   Grid,
   Paper,
+  IconButton,
 } from "@mui/material";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
+import DeleteIcon from "@mui/icons-material/Delete";
 
 function UploadProductForm() {
   const [productName, setProductName] = useState("");
@@ -20,10 +22,10 @@ function UploadProductForm() {
   const [productPrice, setProductPrice] = useState("");
   const [productImages, setProductImages] = useState([]);
   const [category, setCategory] = useState("");
-  const [isDragging, setIsDragging] = useState(false); // Track whether files are being dragged
+  const [isDragging, setIsDragging] = useState(false);
   const [selectedImageDescription, setSelectedImageDescription] =
     useState(null);
-  const [successMessageOpen, setSuccessMessageOpen] = useState(false);
+  const [descriptionPreview, setDescriptionPreview] = useState(null);
   const apiBaseUrl = process.env.API_KEY;
   const endpoint = "v1/files";
   const apiUrl = `${apiBaseUrl}${endpoint}`;
@@ -77,11 +79,10 @@ function UploadProductForm() {
       selectedImages.push(files[i]);
     }
 
-    setProductImages(selectedImages);
+    setProductImages([...productImages, ...selectedImages]);
   };
 
   const handleImageClick = () => {
-    // Trigger the hidden file input when the text or icon is clicked
     document.getElementById("product-image").click();
   };
 
@@ -93,7 +94,7 @@ function UploadProductForm() {
       selectedImages.push(files[i]);
     }
 
-    setProductImages(selectedImages);
+    setProductImages([...productImages, ...selectedImages]);
   };
 
   const handleImageDescriptionDrop = (e) => {
@@ -103,14 +104,15 @@ function UploadProductForm() {
     const files = e.dataTransfer.files;
 
     if (files.length === 1) {
-      setSelectedImageDescription(files[0]);
+      const descriptionImage = files[0];
+      setSelectedImageDescription(descriptionImage);
+      setDescriptionPreview(URL.createObjectURL(descriptionImage));
     } else {
       alert("Please select only one image.");
     }
   };
 
   const handleImageDescriptionClick = () => {
-    // Trigger the hidden file input when the label is clicked
     document.getElementById("single-image-description-input").click();
   };
 
@@ -118,52 +120,52 @@ function UploadProductForm() {
     const files = e.target.files;
 
     if (files.length === 1) {
-      setSelectedImageDescription(files[0]);
+      const descriptionImage = files[0];
+      setSelectedImageDescription(descriptionImage);
+      setDescriptionPreview(URL.createObjectURL(descriptionImage));
     } else {
       alert("Please select only one image.");
     }
   };
 
+  const handleImageDelete = (index) => {
+    const updatedImages = [...productImages];
+    updatedImages.splice(index, 1);
+    setProductImages(updatedImages);
+  };
+
+  const handleUploadMoreImages = () => {
+    document.getElementById("product-image").click();
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Create a FormData object to append the product data
     const formData = new FormData();
     formData.append("productName", productName);
     formData.append("productDescription", productDescription);
     formData.append("productPrice", productPrice);
     formData.append("category", category);
 
-    // Append each selected image to the FormData
     for (let i = 0; i < productImages.length; i++) {
       formData.append("productImages", productImages[i]);
     }
 
     try {
-      // Send a POST request to the API with the FormData
       const response = await axios.post(apiUrl, formData, {
         headers: {
-          "Content-Type": "multipart/form-data", // Set the content type to multipart/form-data for file uploads
+          "Content-Type": "multipart/form-data",
         },
       });
 
-      // Check the response and handle success or error
       if (response.status === 200) {
-        // Handle success, e.g., show a success message
         console.log("Success");
-        setSuccessMessageOpen(true);
       } else {
-        // Handle error, e.g., show an error message
         console.error("Upload failed");
       }
     } catch (error) {
-      // Handle network errors or other exceptions
       console.error("Error:", error);
     }
-  };
-
-  const handleCloseSuccessMessage = () => {
-    setSuccessMessageOpen(false);
   };
 
   return (
@@ -244,21 +246,42 @@ function UploadProductForm() {
             <Grid item xs={10}>
               <Grid container spacing={2}>
                 <Grid item xs={4}>
-                  {/* Display selected image names with a border */}
                   {productImages.length > 0 ? (
                     <div>
                       {productImages.map((image, index) => (
                         <div
                           key={index}
                           style={{
-                            border: "1px solid #ccc",
-                            padding: "5px",
-                            marginBottom: "5px",
+                            display: "flex",
+                            alignItems: "center",
+                            marginBottom: "10px",
                           }}
                         >
-                          {image.name}
+                          <div style={{ marginRight: "10px" }}>
+                            <img
+                              src={URL.createObjectURL(image)}
+                              alt={`Preview ${index}`}
+                              style={{ maxWidth: "100px", maxHeight: "100px" }}
+                            />
+                          </div>
+                          <div>
+                            {image.name}
+                            <IconButton
+                              color="primary"
+                              onClick={() => handleImageDelete(index)}
+                            >
+                              <DeleteIcon />
+                            </IconButton>
+                          </div>
                         </div>
                       ))}
+                      <Button
+                        variant="contained"
+                        color="primary"
+                        onClick={handleUploadMoreImages}
+                      >
+                        Upload More Images
+                      </Button>
                     </div>
                   ) : (
                     <div
@@ -286,39 +309,66 @@ function UploadProductForm() {
                     style={{ display: "none" }}
                     id="product-image"
                     type="file"
-                    multiple // Allow multiple file selection
+                    multiple
                     onChange={handleImageInputChange}
                   />
                 </Grid>
                 <Grid item xs={4}>
-                  <div
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      border: "2px dashed #ccc",
-                      padding: "10px",
-                      textAlign: "center",
-                      cursor: "pointer",
-                      // Set the desired height here
-                    }}
-                    onDragEnter={handleImageDescriptionClick}
-                    onDragOver={handleImageDescriptionDrop}
-                    onDragLeave={handleDragLeave}
-                    onDrop={handleImageDescriptionDrop}
-                    onClick={handleImageDescriptionClick}
-                  >
-                    <div>
-                      <CloudUploadIcon style={{ fontSize: "40px" }} />
-                      <Typography>
-                        {selectedImageDescription
-                          ? selectedImageDescription.name
-                          : "Drag & Drop or Click to Upload Product Image Description"}
-                      </Typography>
+                  {selectedImageDescription ? (
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        marginBottom: "10px",
+                      }}
+                    >
+                      <img
+                        src={descriptionPreview}
+                        alt={`Description Preview`}
+                        style={{ maxWidth: "100px", maxHeight: "100px" }}
+                      />
+                      <div style={{ marginLeft: "10px" }}>
+                        {selectedImageDescription.name}
+                        <IconButton
+                          color="primary"
+                          onClick={() => {
+                            setSelectedImageDescription(null);
+                            setDescriptionPreview(null);
+                          }}
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                      </div>
                     </div>
-                    <div>{/* You can add additional content here */}</div>
-                  </div>
+                  ) : (
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        border: "2px dashed #ccc",
+                        padding: "10px",
+                        textAlign: "center",
+                        cursor: "pointer",
+                      }}
+                      onDragEnter={handleImageDescriptionClick}
+                      onDragOver={handleImageDescriptionDrop}
+                      onDragLeave={handleDragLeave}
+                      onDrop={handleImageDescriptionDrop}
+                      onClick={handleImageDescriptionClick}
+                    >
+                      <div>
+                        <CloudUploadIcon style={{ fontSize: "40px" }} />
+                        <Typography>
+                          {selectedImageDescription
+                            ? selectedImageDescription.name
+                            : "Drag & Drop or Click to Upload Product Image Description"}
+                        </Typography>
+                      </div>
+                      <div>{/* You can add additional content here */}</div>
+                    </div>
+                  )}
                   <input
                     accept="image/*"
                     style={{ display: "none" }}
